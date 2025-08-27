@@ -27,8 +27,8 @@ def izlusci_osnovne_podatke():
                     peak_match = vzorec_peak.search(vsebina[ujemanje.start():ujemanje.end() + 1000])
                     peak_pozicija = peak_match.group(1) if peak_pozicija else ujemanje.group(1)
                     
-                    sales_ujemanje = vzorec_prodaja.search(vsebina[ujemanje.start():ujemanje.end() + 1000])
-                    prodaja = sales_ujemanje.group(1) if sales_ujemanje else "/"
+                    prodaja_ujemanje = vzorec_prodaja.search(vsebina[ujemanje.start():ujemanje.end() + 1000])
+                    prodaja = prodaja_ujemanje.group(1) if prodaja_ujemanje else "/"
                     
                     skladbe.append({
                         "datum": datum,
