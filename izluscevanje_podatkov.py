@@ -42,3 +42,18 @@ def izlusci_osnovne_podatke():
                     })
     
     return skladbe
+
+def izlusci_dodatne_podatke(skladbe):
+    skladbe_na_1 = {}
+    for skladba in skladbe:
+        kljuc = f"{skladba['naslov']}_{skladba['izvajalec']}"
+        if skladba['pozicija'] == 1:
+            if kljuc not in skladbe_na_1:
+                skladbe_na_1[kljuc] = 0
+            skladbe_na_1[kljuc] += 1
+    
+    for skladba in skladbe:
+        kljuc = f"{skladba['naslov']}_{skladba['izvajalec']}"
+        skladba['tedni_na_1'] = skladbe_na_1.get(kljuc, 0)
+    
+    return skladbe
