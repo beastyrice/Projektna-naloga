@@ -1,59 +1,69 @@
-import re
 import os
+from bs4 import BeautifulSoup
 
-def izlusci_osnovne_podatke():
-    vzorec_skladb = re.compile(
-        r'<span class="position">(\d+)</span>.*?'
-        r'<div class="title">.*?<a.*?>(.*?)</a>.*?'
-        r'<div class="artist">.*?<a.*?>(.*?)</a>.*?'
-        r'<span class="weeks-on-chart">(\d+)</span>.*?'
-        r'<span class="movement (up|down|new|non-mover)">.*?(\d+|NEW).*?</span>',
-        re.DOTALL # da '.' ujame tudi novo vrstico
-    )
+def izlusci_osnovne_podatke(mapa='.', od=None, do=None, top_n=40):
+    pesmi, datumi = [], []
+    if od is None or do is None:
+        for ime in os.listdir(mapa):
+            if ime.startswith('teden_') and ime.endswith('.html'):
+                try:
+                    datumi.append(int(ime[6:14]))
+                except:
+                    pass
+        datumi.sort()
+    else:
+        datumi = list(range(od, do))
 
-    vzorec_peak = re.compile(r'Peak.*?<span class="value">(\d+)</span>')
-    vzorec_prodaja = re.compile(r'Sales.*?<span class="value">([\d,]+)</span>')
+    for datum in datumi:
+        pot = os.path.join(mapa, f'teden_{datum}.html')
+        if not os.path.isfile(pot):
+            continue
+        with open(pot, encoding='utf-8', errors='ignore') as fh:
+            soup = BeautifulSoup(fh.read(), 'html.parser')
 
-    skladbe = []
-    for ime_datoteke in os.listdir("uk_charts"):
-        if ime_datoteke.startswith("teden_") and ime_datoteke.endswith(".html"):
-            datum = ime_datoteke[6:-5]
-            
-            with open(os.path.join("uk_charts", ime_datoteke), "r", encoding="utf-8") as dat:
-                vsebina = dat.read()
-                
-                for ujemanje in vzorec_skladb.finditer(vsebina):
-                    
-                    peak_match = vzorec_peak.search(vsebina[ujemanje.start():ujemanje.end() + 1000])
-                    peak_pozicija = peak_match.group(1) if peak_pozicija else ujemanje.group(1)
-                    
-                    prodaja_ujemanje = vzorec_prodaja.search(vsebina[ujemanje.start():ujemanje.end() + 1000])
-                    prodaja = prodaja_ujemanje.group(1) if prodaja_ujemanje else "/"
-                    
-                    skladbe.append({
-                        "datum": datum,
-                        "pozicija": int(ujemanje.group(1)),
-                        "naslov": ujemanje.group(2).strip(),
-                        "izvajalec": ujemanje.group(3).strip(),
-                        "tedni_na_lestvici": int(ujemanje.group(4)),
-                        "gibanje": ujemanje.group(6),
-                        "najvisja_pozicija": int(peak_pozicija),
-                        "prodaja": prodaja
-                    })
-    
-    return skladbe
+        vrstice = []
+        for it in soup.select('.chart-item'):
+            pos = it.select_one('.position .chart-key strong')
+            title = it.select_one('.chart-name')
+            artist = it.select_one('.chart-artist')
+            weeks = it.select_one('li.weeks span')
+            peak = it.select_one('li.peak span')
+            if not (pos and title and artist):
+                continue
+            try:
+                poz = int(pos.get_text(strip=True))
+            except:
+                continue
 
-def izlusci_dodatne_podatke(skladbe):
-    skladbe_na_1 = {}
-    for skladba in skladbe:
-        kljuc = f"{skladba['naslov']}_{skladba['izvajalec']}"
-        if skladba['pozicija'] == 1:
-            if kljuc not in skladbe_na_1:
-                skladbe_na_1[kljuc] = 0
-            skladbe_na_1[kljuc] += 1
-    
-    for skladba in skladbe:
-        kljuc = f"{skladba['naslov']}_{skladba['izvajalec']}"
-        skladba['tedni_na_1'] = skladbe_na_1.get(kljuc, 0)
-    
-    return skladbe
+            naslov = title.get_text(strip=True)
+            if naslov.upper().startswith('NEW'):
+                naslov = naslov[3:].strip()
+            izvajalec = artist.get_text(strip=True)
+            wtxt = weeks.get_text(strip=True) if weeks else ""
+            ptxt = peak.get_text(strip=True) if peak else ""
+            tedni = int(wtxt) if wtxt.isdigit() else None
+            naj = int(ptxt) if ptxt.isdigit() else None
+
+            vrstice.append((poz, naslov, izvajalec, datum, tedni, naj))
+
+        vrstice.sort(key=lambda r: r[0])
+        if isinstance(top_n, int) and top_n > 0:
+            vrstice = vrstice[:top_n]
+
+        pesmi.extend([(n, i, p, d, t, naj) for (p, n, i, d, t, naj) in vrstice])
+
+    pesmi.sort(key=lambda t: (t[3], t[2]))
+    return pesmi
+
+def izlusci_dodatne_podatke(osnovni):
+    pesmi_info = []
+    for (naslov, izvajalec, pozicija, datum, tedni, najvisja) in osnovni:
+        pesmi_info.append({
+            'naslov': naslov,
+            'izvajalec': izvajalec,
+            'pozicija': pozicija,
+            'datum': datum,
+            'tedni_na_lestvici': tedni,
+            'najvisja_pozicija': najvisja
+        })
+    return pesmi_info

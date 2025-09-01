@@ -1,17 +1,21 @@
-from datetime import datetime, timedelta
-import pridobivanje_spletne_strani 
 import izluscevanje_podatkov
 import shranjevanje_podatkov
+import pridobivanje_spletne_strani
 import sys
+from datetime import datetime, timedelta
 
-# za zadnjih 5 let
-zacetek = datetime.now() - timedelta(days=5 * 365)
-konec = datetime.now()
+do_datuma = datetime.now()
+od_datuma = do_datuma - timedelta(days=5*365)
 
-shranjevanje_podatkov.shrani_tedenske_htmlje(zacetek, konec)
-skladbe = izluscevanje_podatkov.izlusci_osnovne_podatke()
-skladbe = izluscevanje_podatkov.izlusci_dodatne_podatke(skladbe)
+mapa = "uk_charts" if len(sys.argv) < 2 else sys.argv[1]
+try:
+    TOP_N = int(sys.argv[2]) if len(sys.argv) >= 3 else 40
+except:
+    TOP_N = 40
 
-shranjevanje_podatkov.shrani_skladbe(skladbe)
-shranjevanje_podatkov.shrani_izvajalce(skladbe)
-shranjevanje_podatkov.shrani_najuspesnejse(skladbe)
+pridobivanje_spletne_strani.shrani_tedenske_htmlje(od_datuma, do_datuma, mapa)
+
+osnovni = izluscevanje_podatkov.izlusci_osnovne_podatke(mapa, top_n=TOP_N)
+skladbe = izluscevanje_podatkov.izlusci_dodatne_podatke(osnovni)
+
+shranjevanje_podatkov.shrani_skladbe(skladbe, "uk_top_40.csv")
