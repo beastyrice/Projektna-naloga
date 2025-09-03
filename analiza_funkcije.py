@@ -49,3 +49,30 @@ def trajektorija_pesmi(df, title_substr: str):
     plt.ylabel('Pozicija (nižja je boljša)')
     plt.tight_layout()
     plt.show()
+
+def pie_porazdelitev_tednov(df):
+    max_tednov = (df.groupby(['naslov','izvajalec'])['tedni_na_lestvici']
+                   .max()
+                   .dropna()
+                   .astype(int))
+
+    def bucket(w):
+        if w == 1: return '1'
+        if w == 2: return '2'
+        if 3 <= w <= 5: return '3-5'
+        if 6 <= w <= 10: return '6-10'
+        if 11 <= w <= 20: return '11-20'
+        if 21 <= w <= 40: return '21-40'
+        return '41+'
+
+    kategorija = max_tednov.map(bucket)
+    vrstni_red = ['1','2','3-5','6-10','11-20','21-40','41+']
+    stevilo = kategorija.value_counts().reindex(vrstni_red, fill_value=0)
+
+    plt.figure(figsize=(6,6))
+    plt.pie(stevilo.values, labels=stevilo.index, autopct='%1.1f%%', startangle=90)
+    plt.axis('equal')
+    plt.tight_layout()
+    plt.show()
+
+    return stevilo.reset_index().rename(columns={'index':'skupina', 0:'stevilo'})
